@@ -1,0 +1,86 @@
+﻿
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1">
+
+    <title>Prueba SignalR - Monitoreo de Aulas</title>
+</head>
+<body>
+
+    <h2>Monitoreo de Aula A-101</h2>
+
+    <p>Conexión: <strong id="conexion">Conectando...</strong></p>
+    <p>Ocupación: <strong id="ocupacion">--</strong></p>
+    <p>Porcentaje: <strong id="porcentaje">--</strong></p>
+
+    <h3>Eventos recibidos</h3>
+    <pre id="eventos"></pre>
+
+    <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@10.0.0/dist/browser/signalr.min.js"></script>
+
+    <script>
+        const conexion = new signalR.HubConnectionBuilder()
+            .withUrl("/hubs/ocupacion")
+            .withAutomaticReconnect()
+            .build();
+
+        const elementoConexion = document.getElementById("conexion");
+
+        conexion.on("OcupacionActualizada", datos => {
+
+            document.getElementById("ocupacion").textContent = `${datos.ocupacionActual}/${datos.capacidad}`;
+
+            document.getElementById("porcentaje").textContent = `${datos.porcentajeOcupacion}%`;
+
+            document.getElementById("eventos").textContent += JSON.stringify(datos, null, 2) + "\n\n";
+        });
+
+        async function cargarOcupacion() {
+            const respuesta = await fetch("/api/aulas/A-101/ocupacion");
+
+            if (!respuesta.ok) {
+                throw new Error("Error consultando ocupación");
+            }
+
+            const datos = await respuesta.json();
+
+            document.getElementById("ocupacion").textContent = datos.ocupacionActual === null ? "Desconocida" : `${datos.ocupacionActual}/ ${datos.capacidad}`;
+
+            document.getElementById("porcentaje").textContent = datos.porcentajeOcupacion === null ? "--" : `${datos.porcentajeOcupacion}%`;
+        }
+
+        conexion.onreconnecting(() => {
+            elementoConexion.textContent = "Reconectando...";
+        });
+
+        conexion.onreconnected(async () => {
+            await conexion.invoke("SuscribirseAula", "A-101");
+            await cargarOcupacion();
+            elementoConexion.textContent = "Conectado";
+        });
+
+        conexion.onclose(() => {
+            elementoConexion.textContent = "Desconectado";
+        });
+
+        async function iniciar() {
+            try {
+                await conexion.start();
+                await conexion.invoke("SuscribirseAula", "A-101");
+                await cargarOcupacion();
+
+                elementoConexion.textContent = "Conectado";
+            } catch (error) {
+                console.error(error);
+                elementoConexion.textContent = "Error de conexión";
+            }
+        }
+
+        iniciar();
+    </script>
+
+</body>
+</html>

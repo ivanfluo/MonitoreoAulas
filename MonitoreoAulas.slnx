@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="MonitoreoAulas.Api/MonitoreoAulas.Api.csproj" />
+  <Project Path="MonitoreoAulas.SerialBridge/MonitoreoAulas.SerialBridge.csproj" />
+</Solution>
